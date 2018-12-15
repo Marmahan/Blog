@@ -26,7 +26,7 @@ app.post('/newuser', function(req,res){
 
     //Checks if the email already exist
     //use of (usercheck) service to check
-    axios.get('http://localhost:1211/user/' + req.body.email).then(function(response){
+    axios.get('http://localhost:1112/user/' + req.body.email).then(function(response){
         if(response.data=='1')
             res.send('User already exists');
         else    //user doesn't exist so create a new user
@@ -48,7 +48,7 @@ app.post('/newuser', function(req,res){
 
 });
 
-//old way with no services from outside
+// //old way with no services from outside
 // //post request to save a new user
 // app.post('/newuser', function(req,res){
 //     // Book.create(req.body).then(function(book){

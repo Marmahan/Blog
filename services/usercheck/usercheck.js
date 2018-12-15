@@ -33,7 +33,7 @@ app.get('/user/:email', function(req,res){
     });
 });
 
-//Service is listening to port 1111
-app.listen(1211, function(){
-    console.log("Service: (User Registration) is running...");
+//Service is listening to port 1112
+app.listen(1112, function(){
+    console.log("Service: (Username Check) is running...");
 });

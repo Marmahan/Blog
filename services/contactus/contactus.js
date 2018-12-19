@@ -6,6 +6,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const Contact = require('./Contact.js');
+const axios = require('axios');
 
 //creating the server
 const app = express();
@@ -20,17 +21,29 @@ app.use(bodyParser.json());
 
 //post request to send a message to the admin
 app.post('/contact', function(req,res){
-    var newContact ={
+    axios.post('http://localhost:1118/validation/contact',
+    {   
         name: req.body.name,
         email: req.body.email,
         content: req.body.content
-    }
-    var contact = new Contact (newContact);
-    contact.save().then(function(){
-        res.send(contact);
-    }).catch(function(err){
-        if(err)
-            throw err;
+        
+    }).then(function(response){
+        if(response.data==1){
+            var newContact ={
+                name: req.body.name,
+                email: req.body.email,
+                content: req.body.content
+            }
+            var contact = new Contact (newContact);
+            contact.save().then(function(){
+                res.send(contact);
+            }).catch(function(err){
+                if(err)
+                    throw err;
+            });
+        }
+        else
+            res.send(response.data);
     });
 });
 

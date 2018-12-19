@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const User = require('../usersreg/User');
 const jwtVerify = require('express-jwt');
 const Post = require('./Post');
-
+const axios = require('axios');
 
 //creating the server
 const app = express();
@@ -29,23 +29,29 @@ const secret = 'secret';
 //User must have a token to make a post
 //jwtVerify({secret:secret}) verifies the token
 app.post('/newpost',jwtVerify({secret:secret}), function(req,res){
-    //res.send(req);
-    //res.send('Allowed to make a post');
-    //console.log(req.user.userID);
-    var newPost ={
-        userID: req.user.userID, //brought from the jwt token
+    axios.post('http://localhost:1118/validation/newpost',
+    {   
         title: req.body.title,
-        body: req.body.body,
-        image: req.body.image
-    }
-     var post = new Post (newPost);
-     post.save().then(function(){
-        res.send(post);
-     }).catch(function(err){
-        if(err)
-            throw err;
-    });    
-    
+        body: req.body.body
+    }).then(function(response){
+        if(response.data==1){
+            var newPost ={
+                userID: req.user.userID, //brought from the jwt token
+                title: req.body.title,
+                body: req.body.body,
+                image: req.body.image
+            }
+            var post = new Post (newPost);
+            post.save().then(function(){
+                res.send(post);
+            }).catch(function(err){
+                if(err)
+                    throw err;
+            }); 
+        }   
+        else
+            res.send(response.data);
+    });
 });
 
 //get a post by a specified user, id must be set to post id, user must be logged in
@@ -128,8 +134,8 @@ app.listen(1115, function(){
 
 /*
 {
-    "email":"test@test.com",
-    "password":"pwd"
+    "email":"4@gmail.com",
+    "password":"whatever"
 }
 
 {

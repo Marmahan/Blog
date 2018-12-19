@@ -23,29 +23,46 @@ app.use(bodyParser.json());
 
 //post request to save a new user
 app.post('/newuser', function(req,res){
-
-    //Checks if the email already exist
-    //use of (usercheck) service to check
-    axios.get('http://localhost:1112/user/' + req.body.email).then(function(response){
-        if(response.data=='1')
-            res.send('User already exists');
-        else    //user doesn't exist so create a new user
+    //call the (validation) service to check if input fields are fine
+    axios.post('http://localhost:1118/validation/registration',
+    {
+        name: req.body.name,
+        email: req.body.email,
+        password: req.body.password
+    }).then(function (response) {
+        if(response.data==1)
             {
-                var newUser ={
-                    name: req.body.name,
-                    email: req.body.email,
-                    password: req.body.password
-                }
-                var user = new User (newUser);
-                user.save().then(function(){
-                    res.send(user);
-                }).catch(function(err){
-                    if(err)
-                        throw err;
-                });   
+                //Checks if the email already exist
+                //call (usercheck) service to check
+                axios.get('http://localhost:1112/user/' + req.body.email).then(function(response){
+                    if(response.data=='1')
+                        res.send('User already exists');
+                    else    //user doesn't exist so create a new user
+                        {
+                            var newUser ={
+                                name: req.body.name,
+                                email: req.body.email,
+                                password: req.body.password
+                            }
+                            var user = new User (newUser);
+                            user.save().then(function(){
+                                res.send(user);
+                            }).catch(function(err){
+                                if(err)
+                                    throw err;
+                            });   
+                        }
+                });                
             }
-    });
+        else
+            res.send(response.data);
+      })
+      .catch(function (error) {
+        if(error)
+            throw error;
+      });
 
+    
 });
 
 // //old way with no services from outside
@@ -84,3 +101,4 @@ app.post('/newuser', function(req,res){
 app.listen(1111, function(){
     console.log("Service: (User Registration) is running...");
 });
+

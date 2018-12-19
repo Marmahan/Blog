@@ -8,7 +8,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const Comment = require('./Comment');
-
+const axios = require('axios');
 
 //creating the server
 const app = express();
@@ -24,22 +24,30 @@ app.use(bodyParser.json());
 
 //post request to save a new comment
 app.post('/newcomment', function(req,res){
-    //res.send(req);
-    //res.send('Allowed to make a post');
-    //console.log(req.user.userID);
-    var newComment ={
-        postID: req.body.postID, //brought from the jwt token
-        email: req.body.email,
+    axios.post('http://localhost:1118/validation/newcomment',
+    {   
+        email: req.body.email,  //no need to validate postID because the frontend will always send it 
         commentbody: req.body.commentbody
-    }
-     var comment = new Comment (newComment);
-     comment.save().then(function(){
-        res.send(comment);
-     }).catch(function(err){
-        if(err)
-            throw err;
-    });    
-    
+        
+    }).then(function(response){
+        if(response.data==1){
+            var newComment ={
+                postID: req.body.postID, 
+                email: req.body.email,
+                commentbody: req.body.commentbody
+            }
+            var comment = new Comment (newComment);
+            comment.save().then(function(){
+                res.send(comment);
+            }).catch(function(err){
+                if(err)
+                    throw err;
+                });
+        }
+        else
+            res.send(response.data);
+    });
+
 });
 
 //get all comments of a specific post
@@ -68,16 +76,6 @@ app.listen(1116, function(){
 });
 
 /*
-{
-    "email":"test@test.com",
-    "password":"pwd"
-}
-
-{
-    "title": "Post again updated",
-    "body": "Another post body asdfsadfsadf",
-    "image": " "
-}
 
 {
     "postID": "Post again updated",

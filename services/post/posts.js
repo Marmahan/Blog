@@ -29,7 +29,7 @@ const secret = 'secret';
 //User must have a token to make a post
 //jwtVerify({secret:secret}) verifies the token
 app.post('/newpost',jwtVerify({secret:secret}), function(req,res){
-    axios.post('http://localhost:1118/validation/newpost',
+    axios.post('http://localhost:1118/validation/newpost', //request input validation from (Validation) service
     {   
         title: req.body.title,
         body: req.body.body

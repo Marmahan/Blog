@@ -24,9 +24,10 @@ app.use(bodyParser.json());
 
 //post request to save a new comment
 app.post('/newcomment', function(req,res){
-    axios.post('http://localhost:1118/validation/newcomment',
+    axios.post('http://localhost:1118/validation/newcomment', //request input validation from (Validation) service
     {   
-        email: req.body.email,  //no need to validate postID because the frontend will always send it 
+        //no need to validate postID because the frontend will always send it 
+        email: req.body.email,  
         commentbody: req.body.commentbody
         
     }).then(function(response){

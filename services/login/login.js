@@ -10,7 +10,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const User = require('../usersreg/User');
 const jwt = require('jsonwebtoken');
-
+const axios = require('axios');
 
 //creating the server
 const app = express();
@@ -28,19 +28,30 @@ const secret = 'secret';
 //post request to save a new user
 app.post('/login', function(req,res){
 
-    //Checks if the email already exist
-    User.findOne({ email: req.body.email, password: req.body.password}, function (err, doc){
-        if(doc)//user has an account
-            {
-                let expirationDate = Math.floor(Date.now() / 1000) + 10000 //30 sec
-                var token = jwt.sign({userID: doc._id, exp: expirationDate}, secret);
-                res.send(token);//send jwt token
-            }
-        //email doesn't exist
-        else{
-            res.send('Invalid');
-            }
-        });
+    axios.post('http://localhost:1118/validation/login', //request input validation from (Validation) service
+    {   
+        email: req.body.email,
+        password: req.body.password
+
+    }).then(function(response){
+        if(response.data==1){
+            //Checks if the email already exist
+            User.findOne({ email: req.body.email, password: req.body.password}, function (err, doc){
+                if(doc)//user has an account
+                    {
+                        let expirationDate = Math.floor(Date.now() / 1000) + 10000 //30 sec
+                        var token = jwt.sign({userID: doc._id, exp: expirationDate}, secret);
+                        res.send(token);//send jwt token
+                    }
+                //email doesn't exist
+                else{
+                    res.send('Invalid login');
+                    }
+            });
+        }   
+        else
+            res.send(response.data);
+    });
 });
 
 

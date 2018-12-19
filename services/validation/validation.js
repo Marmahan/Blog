@@ -38,6 +38,15 @@ app.post('/validation/:service', function(req,res){
             else
                 res.send('1');  //everything is fine, all the fields are valid
             break;
+        
+        case 'login':    //validate (registration) service
+            if(!validator.validate(req.body.email))
+                res.send('Email is not valid');
+            else if(!req.body.password)
+                res.send('Password is not valid');
+            else
+                res.send('1');  //everything is fine, all the fields are valid
+            break;
 
         case 'newpost':    //validate (newpost) service
             if(!req.body.title || Object.keys(req.body.title).length<15)

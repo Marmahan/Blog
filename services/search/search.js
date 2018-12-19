@@ -25,8 +25,8 @@ const secret = 'secret';
 //post request to search for a term
 //search is case insensitive
 app.post('/search/:term', function(req,res){
-    axios.post('http://localhost:1118/validation/search',
-    {   
+    axios.post('http://localhost:1118/validation/search', //request input validation from (Validation) service
+    {                                                     // Validation is not working proberly yet
         term: req.params.term
     }).then(function(response){
 

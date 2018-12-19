@@ -21,7 +21,7 @@ app.use(bodyParser.json());
 
 //post request to send a message to the admin
 app.post('/contact', function(req,res){
-    axios.post('http://localhost:1118/validation/contact',
+    axios.post('http://localhost:1118/validation/contact', //request input validation from (Validation) service
     {   
         name: req.body.name,
         email: req.body.email,

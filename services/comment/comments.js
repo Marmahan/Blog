@@ -32,18 +32,36 @@ app.post('/newcomment', function(req,res){
         
     }).then(function(response){
         if(response.data==1){
-            var newComment ={
-                postID: req.body.postID, 
-                email: req.body.email,
+            axios.post('http://localhost:1119/duplication/newcomment',
+            {
+                postID:req.body.postID,
+                email: req.body.email,  
                 commentbody: req.body.commentbody
-            }
-            var comment = new Comment (newComment);
-            comment.save().then(function(){
-                res.send(comment);
-            }).catch(function(err){
-                if(err)
-                    throw err;
-                });
+
+            }).then(function(answer){
+                if(answer.data==1){
+                    axios.post('http://localhost:1120/sprotect/newcomment').then(function(reply){
+                        if(reply.data==1){
+                            var newComment ={
+                                postID: mongoose.Types.ObjectId(req.body.postID), 
+                                email: req.body.email,
+                                commentbody: req.body.commentbody
+                            }
+                            var comment = new Comment (newComment);
+                            comment.save().then(function(){
+                                res.send(comment);
+                            }).catch(function(err){
+                                if(err)
+                                    throw err;
+                            });
+                        }
+                        else
+                            res.send(reply.data);  
+                    });
+                }
+                else
+                    res.send(answer.data);
+            });
         }
         else
             res.send(response.data);
@@ -79,7 +97,7 @@ app.listen(1116, function(){
 /*
 
 {
-    "postID": "Post again updated",
+    "postID": "5c1283f1c212ce117cdf3313",
     "email": "testemail@test.com",
     "commentbody": "This is the first comment"
 }

@@ -49,7 +49,7 @@ app.post('/validation/:service', function(req,res){
             break;
 
         case 'newpost':    //validate (newpost) service
-            if(!req.body.title || Object.keys(req.body.title).length<15)
+            if(!req.body.title || Object.keys(req.body.title).length<5)
                 res.send('Title is not valid');
             else if(!req.body.body|| Object.keys(req.body.body).length<30)
                 res.send('Post  is not valid');
@@ -94,5 +94,4 @@ app.post('/validation/:service', function(req,res){
 app.listen(1118, function(){
     console.log("Service: (Validation) is running...");
 });
-
 

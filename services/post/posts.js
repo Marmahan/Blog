@@ -35,19 +35,35 @@ app.post('/newpost',jwtVerify({secret:secret}), function(req,res){
         body: req.body.body
     }).then(function(response){
         if(response.data==1){
-            var newPost ={
-                userID: req.user.userID, //brought from the jwt token
+            axios.post('http://localhost:1119/duplication/newpost',{
                 title: req.body.title,
-                body: req.body.body,
-                image: req.body.image
-            }
-            var post = new Post (newPost);
-            post.save().then(function(){
-                res.send(post);
-            }).catch(function(err){
-                if(err)
-                    throw err;
-            }); 
+                body: req.body.body
+            }).then(function(answer){ //request to (Duplication) service
+                if(answer.data==1){
+                    axios.post('http://localhost:1120/sprotect/newpost').then(function(reply){
+                        if(reply.data==1){
+                            var newPost ={
+                                userID: req.user.userID, //brought from the jwt token
+                                title: req.body.title,
+                                body: req.body.body,
+                                image: req.body.image
+                            }
+                            var post = new Post (newPost);
+                            post.save().then(function(){
+                                res.send(post);
+                            }).catch(function(err){
+                                if(err)
+                                    throw err;
+                            }); 
+                        }
+                        else
+                            res.send(reply.data); 
+                    });
+                }
+                else
+                    res.send(answer.data);
+            });
+
         }   
         else
             res.send(response.data);

@@ -8,9 +8,12 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const axios = require('axios');
 const User = require('./User');
+var cors = require('cors');         //to handle cors error !!! required in all services
 
 //creating the server
 const app = express();
+
+app.use(cors())
 
 //connect to mongodb
 mongoose.connect('mongodb://localhost/userregservice',{ useNewUrlParser: true });
@@ -39,18 +42,25 @@ app.post('/newuser', function(req,res){
                         res.send('User already exists');
                     else    //user doesn't exist so create a new user
                         {
-                            var newUser ={
-                                name: req.body.name,
-                                email: req.body.email,
-                                password: req.body.password
-                            }
-                            var user = new User (newUser);
-                            user.save().then(function(){
-                                res.send(user);
-                            }).catch(function(err){
-                                if(err)
-                                    throw err;
-                            });   
+                            axios.post('http://localhost:1120/sprotect/registration').then(function(reply){ //spam protection
+                                if(reply.data==1){
+                                    var newUser ={
+                                        name: req.body.name,
+                                        email: req.body.email,
+                                        password: req.body.password
+                                    }
+                                    var user = new User (newUser);
+                                    user.save().then(function(){
+                                        res.send(user);
+                                    }).catch(function(err){
+                                        if(err)
+                                            throw err;
+                                    });  
+                                }
+                                else
+                                    res.send('1');
+                            });
+ 
                         }
                 });                
             }

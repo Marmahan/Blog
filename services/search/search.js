@@ -24,18 +24,24 @@ const secret = 'secret';
 
 //post request to search for a term
 //search is case insensitive
-app.post('/search/:term', function(req,res){
+app.post('/search', function(req,res){
     axios.post('http://localhost:1118/validation/search', //request input validation from (Validation) service
     {                                                     // Validation is not working proberly yet
-        term: req.params.term
+        term: req.body.term
     }).then(function(response){
 
         if(response.data==1){
-            Post.find({body: {'$regex': req.params.term,$options:'i'}}, function(err, posts){
-                if(err)
-                  res.send(err);
-                else 
-                  res.json(posts)   
+            axios.post('http://localhost:1120/sprotect/search').then(function(reply){
+                if(reply.data==1){
+                    Post.find({body: {'$regex': req.body.term,$options:'i'}}, function(err, posts){
+                        if(err)
+                          res.send(err);
+                        else 
+                          res.json(posts)   
+                    });
+                }
+                else    
+                    res.send(reply.data);
             });
         }
         else
@@ -49,3 +55,10 @@ app.listen(1117, function(){
     console.log("Service: (Search) is running...");
 });
 
+
+
+/*
+{
+    "term":"here"
+}
+*/

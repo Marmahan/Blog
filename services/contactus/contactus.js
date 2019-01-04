@@ -8,8 +8,12 @@ const mongoose = require('mongoose');
 const Contact = require('./Contact.js');
 const axios = require('axios');
 
+var cors = require('cors');         //to handle cors error !!! required in all services
+
 //creating the server
 const app = express();
+
+app.use(cors())
 
 //connect to mongodb
 mongoose.connect('mongodb://localhost/contactservice',{ useNewUrlParser: true });
@@ -29,23 +33,44 @@ app.post('/contact', function(req,res){
         
     }).then(function(response){
         if(response.data==1){
-            var newContact ={
+            axios.post('http://localhost:1119/duplication/contact', //request duplication check from (Duplication) service
+            {
                 name: req.body.name,
                 email: req.body.email,
                 content: req.body.content
-            }
-            var contact = new Contact (newContact);
-            contact.save().then(function(){
-                res.send(contact);
-            }).catch(function(err){
-                if(err)
-                    throw err;
+
+            }).then(function(answer){
+                if(answer.data==1){
+                    axios.post('http://localhost:1120/sprotect/contact').then(function(reply){ //Spam protector
+                        if(reply.data==1){
+                            var newContact ={
+                                name: req.body.name,
+                                email: req.body.email,
+                                content: req.body.content
+                            }
+                            var contact = new Contact (newContact);
+                            contact.save().then(function(){
+                                res.send('1');
+                            }).catch(function(err){
+                                if(err)
+                                    throw err;
+                            });
+                        }
+                        else
+                            res.send(reply.data); 
+                    });
+
+                }
+                else
+                    res.send(answer.data);
             });
         }
         else
             res.send(response.data);
     });
 });
+
+
 
 //Service is listening to port 1113
 app.listen(1113, function(){
@@ -54,3 +79,13 @@ app.listen(1113, function(){
 
 
 
+
+/*
+
+{
+    "name": "Post again updated",
+    "email": "Another post body asdfsadfsadf",
+    "content": "This is a contact request, this is some message"
+}
+
+*/

@@ -112,3 +112,10 @@ app.listen(1111, function(){
     console.log("Service: (User Registration) is running...");
 });
 
+/*
+{
+    "name":"Whatever the name is",
+    "email":"wev@test.con",
+    "password":"somepassword"
+}
+*/

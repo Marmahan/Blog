@@ -12,8 +12,11 @@ const User = require('../usersreg/User');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
+var cors = require('cors');         //to handle cors error !!! required in all services
+
 //creating the server
 const app = express();
+app.use(cors())
 
 //connect to mongodb
 mongoose.connect('mongodb://localhost/userregservice',{ useNewUrlParser: true });
@@ -41,7 +44,12 @@ app.post('/login', function(req,res){
                     {
                         let expirationDate = Math.floor(Date.now() / 1000) + 10000 //30 sec
                         var token = jwt.sign({userID: doc._id, exp: expirationDate}, secret);
-                        res.send(token);//send jwt token
+                        //set loggedin true
+                        User.findOneAndUpdate({email: req.body.email}, { $set: { islogged: true } },{ new: true }, function(err,doc){ 
+                            //console.log(doc);
+                            res.send(token);//send jwt token
+                        });
+
                     }
                 //email doesn't exist
                 else{

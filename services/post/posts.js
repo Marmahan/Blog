@@ -11,9 +11,11 @@ const User = require('../usersreg/User');
 const jwtVerify = require('express-jwt');
 const Post = require('./Post');
 const axios = require('axios');
-
+var cors = require('cors');         //to handle cors error !!! required in all services
 //creating the server
 const app = express();
+
+app.use(cors())
 
 //connect to mongodb
 mongoose.connect('mongodb://localhost/posts',{ useNewUrlParser: true });
@@ -107,6 +109,17 @@ app.get('/post/:id', function(req,res){
 app.get('/allposts',jwtVerify({secret:secret}), function(req,res){
     //req.user.userID is brought from the token
     Post.find({userID: req.user.userID}).then(function(posts){
+        res.json(posts);
+    }).catch(function(err){
+        if(err)
+            throw err;
+    });
+});
+
+//get all posts 
+app.get('/posts',function(req,res){
+    //req.user.userID is brought from the token
+    Post.find().then(function(posts){
         res.json(posts);
     }).catch(function(err){
         if(err)

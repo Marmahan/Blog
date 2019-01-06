@@ -17,6 +17,10 @@ const User = mongoose.model('User',{
     password :{
         type: String,
         required: true
+    },
+    islogged: {
+        type: Boolean,
+        default: false
     }
 });
 

@@ -22,7 +22,7 @@ const Post = mongoose.model('Post',{
         type: String,
         required: true
     }, 
-   imgage: {
+    imgage: {
         data: Buffer, 
         contentType: String,
         required: false

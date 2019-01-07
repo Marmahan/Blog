@@ -30,46 +30,53 @@ const secret = 'secret';
 //it saves userid as well as the post
 //User must have a token to make a post
 //jwtVerify({secret:secret}) verifies the token
-app.post('/newpost',jwtVerify({secret:secret}), function(req,res){
-    axios.post('http://localhost:1118/validation/newpost', //request input validation from (Validation) service
-    {   
-        title: req.body.title,
-        body: req.body.body
-    }).then(function(response){
-        if(response.data==1){
-            axios.post('http://localhost:1119/duplication/newpost',{
-                title: req.body.title,
-                body: req.body.body
-            }).then(function(answer){ //request to (Duplication) service
-                if(answer.data==1){
-                    axios.post('http://localhost:1120/sprotect/newpost').then(function(reply){
-                        if(reply.data==1){
-                            var newPost ={
-                                userID: req.user.userID, //brought from the jwt token
-                                title: req.body.title,
-                                body: req.body.body,
-                                image: req.body.image
+app.post('/newpost/:uemail',jwtVerify({secret:secret}), function(req,res){
+    let thewriter='';
+    axios.get('http://localhost:1122/email/'+ req.params.uemail).then(function(wrt){
+        thewriter=wrt.data;
+        //console.log(wrt.data);
+        axios.post('http://localhost:1118/validation/newpost', //request input validation from (Validation) service
+        {   
+            title: req.body.title,
+            body: req.body.body
+        }).then(function(response){
+            if(response.data==1){
+                axios.post('http://localhost:1119/duplication/newpost',{
+                    title: req.body.title,
+                    body: req.body.body
+                }).then(function(answer){ //request to (Duplication) service
+                    if(answer.data==1){
+                        axios.post('http://localhost:1120/sprotect/newpost').then(function(reply){
+                            if(reply.data==1){
+                                var newPost ={
+                                    userID: req.user.userID, //brought from the jwt token
+                                    title: req.body.title,
+                                    body: req.body.body,
+                                    writer: thewriter,
+                                    image: req.body.image
+                                }
+                                var post = new Post (newPost);
+                                post.save().then(function(){
+                                    res.send(post);
+                                }).catch(function(err){
+                                    if(err)
+                                        throw err;
+                                }); 
                             }
-                            var post = new Post (newPost);
-                            post.save().then(function(){
-                                res.send(post);
-                            }).catch(function(err){
-                                if(err)
-                                    throw err;
-                            }); 
-                        }
-                        else
-                            res.send(reply.data); 
-                    });
-                }
-                else
-                    res.send(answer.data);
-            });
-
-        }   
-        else
-            res.send(response.data);
+                            else
+                                res.send(reply.data); 
+                        });
+                    }
+                    else
+                        res.send(answer.data);
+                });
+    
+            }   
+            else
+                res.send(response.data);
+        });
     });
+    
 });
 
 //get a post by a specified user, id must be set to post id, user must be logged in
@@ -170,6 +177,12 @@ app.listen(1115, function(){
 {
     "title": "Post again updated",
     "body": "Another post body asdfsadfsadf",
+    "image": " "
+}
+
+{
+    "title": "Post with a writer correct",
+    "body": "Another post body here are some content i don't know  should work now  ",
     "image": " "
 }
 

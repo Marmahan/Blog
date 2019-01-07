@@ -21,6 +21,9 @@ const Post = mongoose.model('Post',{
    body :{
         type: String,
         required: true
+    },
+    writer:{
+        type:String,
     }, 
     imgage: {
         data: Buffer, 

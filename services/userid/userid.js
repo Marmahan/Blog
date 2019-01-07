@@ -37,15 +37,12 @@ app.get('/user/:id', function(req,res){
     });
 });
 
-
-//get user info based on email
+//get user name based on email
 app.get('/email/:email', function(req,res){
-    User.find({email: req.params.email}).select('-password -islogged').then(function(response){
-        res.json(response);
-    }).catch(function(err){
-        if(err)
-            throw err;
+    User.findOne({ email: req.params.email},function(err,doc){
+        res.send(doc.name);
     });
+
 });
 
 

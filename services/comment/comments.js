@@ -9,9 +9,11 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const Comment = require('./Comment');
 const axios = require('axios');
+var cors = require('cors');         //to handle cors error !!! required in all services
 
 //creating the server
 const app = express();
+app.use(cors());
 
 //connect to mongodb
 mongoose.connect('mongodb://localhost/comments',{ useNewUrlParser: true });
@@ -49,7 +51,7 @@ app.post('/newcomment', function(req,res){
                             }
                             var comment = new Comment (newComment);
                             comment.save().then(function(){
-                                res.send(comment);
+                                res.send('1');
                             }).catch(function(err){
                                 if(err)
                                     throw err;

@@ -10,9 +10,9 @@ const Post = mongoose.model('Post',{
         type: mongoose.Schema.Types.ObjectId,
         required: true
     },
-   time : { 
-        type : Date, 
-        default: Date.now 
+   date : { 
+        type : Date 
+        //default: Date.now 
     },
    title :{
        type: String,

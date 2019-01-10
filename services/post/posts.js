@@ -53,6 +53,7 @@ app.post('/newpost/:uemail',jwtVerify({secret:secret}), function(req,res){
                                     title: req.body.title,
                                     body: req.body.body,
                                     writer: thewriter,
+                                    date: Date.now(),
                                     image: req.body.image
                                 }
                                 var post = new Post (newPost);
@@ -105,7 +106,7 @@ app.get('/usersposts/:id', function(req,res){
 app.get('/post/:id', function(req,res){
     //req.user.userID is brought from the token
     Post.find({_id:req.params.id}).then(function(posts){
-        res.json(posts);
+        res.send(posts);
     }).catch(function(err){
         if(err)
             throw err;
@@ -170,8 +171,8 @@ app.listen(1115, function(){
 
 /*
 {
-    "email":"4@gmail.com",
-    "password":"whatever"
+    "email":"lok@test.com",
+    "password":"pwd"
 }
 
 {

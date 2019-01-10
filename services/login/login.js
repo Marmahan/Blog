@@ -68,5 +68,3 @@ app.post('/login', function(req,res){
 app.listen(1114, function(){
     console.log("Service: (Login) is running...");
 });
-
-

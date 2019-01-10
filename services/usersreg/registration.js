@@ -13,7 +13,7 @@ var cors = require('cors');         //to handle cors error !!! required in all s
 //creating the server
 const app = express();
 
-app.use(cors())
+app.use(cors());
 
 //connect to mongodb
 mongoose.connect('mongodb://localhost/userregservice',{ useNewUrlParser: true });
@@ -51,7 +51,7 @@ app.post('/newuser', function(req,res){
                                     }
                                     var user = new User (newUser);
                                     user.save().then(function(){
-                                        res.send(user);
+                                        res.send('1');
                                     }).catch(function(err){
                                         if(err)
                                             throw err;

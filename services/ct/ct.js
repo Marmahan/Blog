@@ -27,7 +27,7 @@ app.post('/contenttrustevaluate', function(req,res){
     var svs= new Array();
     var sdata= new Array();
     var selfPort=1116;// the port of the comment service so it can recognize its direct trust
-    var nOfServices=3;
+    var nOfServices=7;//no. of services - 1
     var indexes= new Array();
     var index=-1;
     var isTrustSufficient=false;
@@ -35,6 +35,8 @@ app.post('/contenttrustevaluate', function(req,res){
     var allAttempts=false;
     var evaluate=0;
     var trust=0;
+    var notZeroTrust=0;//to calculate how many trusts are not zero so divide the overall over this number
+    var finalevaluation=0;
 
     Service.find({name: req.body.serviceName }).then( services =>{
 
@@ -98,7 +100,7 @@ app.post('/contenttrustevaluate', function(req,res){
                        return acc;
                    }, {});
                
-                  //console.log(acc);
+                  console.log(acc);
                   //console.log('third');
                 }).then(()=>{//calculate trust evaluation
                     if(acc.source=='in')
@@ -106,25 +108,82 @@ app.post('/contenttrustevaluate', function(req,res){
                     else
                         trust = trust +5;
                     //console.log(trust);
-                    if(acc.successful>acc.failed)
-                        trust+=10;
-                    else
+
+                    //mainpulate the trust value depending on the difference
+                    var difference=0;
+                    difference=acc.successful-acc.failed;
+
+                    if(difference<0)
                         trust-=5;
+                    else if(difference>0 && difference<4)
+                        trust+=2;
+                    else if(difference>3 && difference<7)
+                        trust+=2;
+                    else if(difference>7 && difference < 11)
+                        trust+=2;
+                    else if(difference>10)
+                        trust+=5;
+
                     //console.log(trust);
 
-                    trust=trust+parseInt(acc.strust);
-                    trust=trust+parseInt(acc.trust0);
-                    trust=trust+parseInt(acc.trust1);
+                    //number of services (including self-trust)
+                    var tmptrust=0;
 
-                    //console.log(trust);
-                    //console.log(trust/nOfServices);
+                    tmptrust=parseInt(acc.strust)*2
+                    if(tmptrust)
+                        notZeroTrust++;
+                    trust=trust+tmptrust;
+                    tmptrust=0;
+                    
+                    tmptrust=parseInt(acc.trust0);
+                    if(tmptrust)
+                        notZeroTrust++;
+                    trust=trust+tmptrust;
+                    tmptrust=0;
 
-                    if((trust/nOfServices)>10)
+                    tmptrust=parseInt(acc.trust1);
+                    if(tmptrust)
+                        notZeroTrust++;
+                    trust=trust+tmptrust;
+                    tmptrust=0;
+
+                    tmptrust=parseInt(acc.trust2);
+                    if(tmptrust)
+                        notZeroTrust++;
+                    trust=trust+tmptrust;
+                    tmptrust=0;
+
+                    tmptrust=parseInt(acc.trust3);
+                    if(tmptrust)
+                        notZeroTrust++;
+                    trust=trust+tmptrust;
+                    tmptrust=0;
+
+                    tmptrust=parseInt(acc.trust4);
+                    if(tmptrust)
+                        notZeroTrust++;
+                    trust=trust+tmptrust;
+                    tmptrust=0;
+
+                    tmptrust=parseInt(acc.trust5);
+                    if(tmptrust)
+                        notZeroTrust++;
+                    trust=trust+tmptrust;
+                    tmptrust=0;
+
+                    //divide the final trust by the trusts that are not zero
+                    finalevaluation=trust/notZeroTrust;
+
+                    console.log('sum of trust is ' + trust);
+                    console.log('final evaluation ' + finalevaluation);
+
+                    if((finalevaluation)>10)
                         trust=10;
-                    else if ((trust/nOfServices)<0)
+                    else if ((finalevaluation)<0)
                         trust = 0;
                     else
-                        trust=Math.floor(trust/nOfServices);
+                        trust=Math.floor(finalevaluation);
+
                     //trust evaluation according to sensitivity
                     switch(acc.sensitivity){
                         case 'h':
@@ -165,16 +224,17 @@ app.post('/contenttrustevaluate', function(req,res){
 }) 
 
 
-var resulttrusts=new Array();
+
 app.post('/evaluate', function(req,res){
 
     var results=new Array();
+    var resulttrusts=new Array();
 
     //5 refers to the number of tries
     request(5, (data, error) => {
         // consume data
         if (error) {
-            //console.error(error);
+            res.send(error);
             return;
         }
         //console.log(data.data);
@@ -187,6 +247,8 @@ app.post('/evaluate', function(req,res){
             //success, result doesn't have f in it
             //it only contains the port number
             if(!response.data.toString().includes('failed')) {
+                //should save the trust values back to the database
+                //here
                 res.send(response.data.toString());
             }
             else {//failed try so get the values and store them in the array
@@ -209,15 +271,21 @@ app.post('/evaluate', function(req,res){
                     request(--retries, callback);
                 }
                 //should send the highest value out of failed attempts
-                //else {
-                //     callback([], "out of retries");  
-                // }
+                else {
+                        //parse the values of the result into integer
+                        results.forEach(function (arrayItem) {
+                            resulttrusts.push(parseInt(arrayItem.trust));
+                        });
+                        console.log(resulttrusts)
+                        //get the index of max value
+                        var indexOfMaxValue = resulttrusts.indexOf(Math.max(...resulttrusts));
+                        console.log(results[indexOfMaxValue].port);
+                        //should store the trust values back to the database
+                        callback([], "Not enough trust but best possible is "+ results[indexOfMaxValue].port);  
+                    }
             }
         })
         .catch((error) => {
-        //     // for(var i in results.length){
-        //     //     resulttrusts.push(parseInt(results[i].trust));
-        //     // }
             console.log(results);
             res.send('Service was not found');
           });

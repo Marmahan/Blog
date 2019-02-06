@@ -26,7 +26,7 @@ app.post('/contenttrustevaluate', function(req,res){
     //store services names and ports
     var svs= new Array();
     var sdata= new Array();
-    var selfPort=1116;// the port of the comment service so it can recognize its direct trust
+    var selfPort=req.body.reqPort;// the port of the requestor service so it can recognize its direct trust
     var nOfServices=7;//no. of services - 1
     var indexes= new Array();
     var index=-1;
@@ -37,6 +37,7 @@ app.post('/contenttrustevaluate', function(req,res){
     var trust=0;
     var notZeroTrust=0;//to calculate how many trusts are not zero so divide the overall over this number
     var finalevaluation=0;
+    var sTrustIndex=-1;
 
     Service.find({name: req.body.serviceName }).then( services =>{
 
@@ -82,12 +83,15 @@ app.post('/contenttrustevaluate', function(req,res){
                         {
                             res.status(402).send('Error retrieving the relation data');
                         }
-                    else{
+                    else{   //store the values of trust in the Relation into the array
                             var v=0,c=0;
                             for(v=0;v< retn.services.length;v++){
                                 var key="trust"+c;
                                 if(retn.services[v].port==selfPort)//if the port matchs the port of the service 
-                                    key="strust" //then this is the direct trust value
+                                    {
+                                        key="strust"; //then this is the direct trust value
+                                        sTrustIndex=v;//send the index of the direct trust/self-trust
+                                    }
                                 else
                                     c++;
                                 sdata.push({[key]:retn.services[v].trust})
@@ -129,7 +133,7 @@ app.post('/contenttrustevaluate', function(req,res){
                     //number of services (including self-trust)
                     var tmptrust=0;
 
-                    tmptrust=parseInt(acc.strust)*2
+                    tmptrust=parseInt(acc.strust);//*2
                     if(tmptrust)
                         notZeroTrust++;
                     trust=trust+tmptrust;
@@ -199,18 +203,24 @@ app.post('/contenttrustevaluate', function(req,res){
                                 isTrustSufficient=true;
                             break;
                     }
+
+                    console.log('strust index is ' + sTrustIndex);
                     //send the port number to refer to successful evaluation
+                    //also send trust, interactions+1, successful+1, id
                     if(isTrustSufficient){
                         console.log(trust);
-                        res.send(acc.port.toString());
+                        //store the values to send them in the response
+                        var finalresponse=[];
+                         finalresponse.push({port:acc.port.toString(),trust:trust.toString(),
+                            interactions:acc.interactions.toString(),successful:acc.successful.toString(),
+                            trustIndex:sTrustIndex.toString()});
+                        //send the response    
+                        res.send(finalresponse);
+
                     }
                     else
                         {
                             console.log(trust);
-                            //send f + port number + t + trust value
-                            //so the port number and the trust can be used later to 
-                            //select the highest trust among all the insufficient trusts
-                            //f referes to fail
                             res.send('failed' + acc.port.toString()+'t'+trust+';');
                         }
                 })
@@ -224,12 +234,13 @@ app.post('/contenttrustevaluate', function(req,res){
 }) 
 
 
-
+var reqPort=0;
 app.post('/evaluate', function(req,res){
 
+    reqPort:req.body.reqPort;//get the port of the requesting service
     var results=new Array();
     var resulttrusts=new Array();
-
+    
     //5 refers to the number of tries
     request(5, (data, error) => {
         // consume data
@@ -242,15 +253,52 @@ app.post('/evaluate', function(req,res){
 
     function request( retries,  callback) {
         axios.post('http://localhost:2000/contenttrustevaluate', {
-            serviceName: req.body.serviceName
+            serviceName: req.body.serviceName,//name of the required service
+            reqPort: req.body.reqPort        //port of the requestor
         }).then(response => {
             //success, result doesn't have f in it
             //it only contains the port number
             if(!response.data.toString().includes('failed')) {
                 //should save the trust values back to the database
                 //here
-                res.send(response.data.toString());
+                var portvalue = response.data[0].port;
+                var trustvalue = response.data[0].trust;
+                var interactionsvalue = parseInt(response.data[0].interactions)+1;
+                var successfullvalue = parseInt(response.data[0].successful)+1;
+                var directtrustindex = response.data[0].trustIndex;
+
+                console.log('port value is '+portvalue);
+                console.log('trust value is '+trustvalue);
+                console.log('interactions value is '+interactionsvalue);
+                console.log('successfull value is '+successfullvalue);
+                console.log('directtrustindex value is '+directtrustindex);
+
+                //update the Service collection
+                //new values for interactions,...
+                Service.findOneAndUpdate({port: portvalue }, 
+                    { lastsuccess: new Date().toString(), interactions: interactionsvalue,
+                    successful: successfullvalue },
+                    { new: true, useFindAndModify: false })
+                    .then((updated)=>{
+                    console.log("Successfuly updated")
+                }).catch((err)=>{
+                    console.log(err);
+                })
+
+                //Update the direct trust
+                 Relation.findOneAndUpdate({port: portvalue, 'services.port':'1116' }, 
+                 {'$set': {
+                    'services.$.trust': trustvalue.toString()
+                }}, { new: true, useFindAndModify: false }).then(()=>{
+                    console.log('direct trust updated');
+                }).catch((err)=>{
+                    console.log(err);
+                })
+
+                res.send(portvalue.toString());
             }
+
+
             else {//failed try so get the values and store them in the array
                 //extract the trust value
                 var trustvalue = response.data.toString().substring(
@@ -273,6 +321,7 @@ app.post('/evaluate', function(req,res){
                 //should send the highest value out of failed attempts
                 else {
                         //parse the values of the result into integer
+                        //so we can extract the highest trust
                         results.forEach(function (arrayItem) {
                             resulttrusts.push(parseInt(arrayItem.trust));
                         });
@@ -286,7 +335,7 @@ app.post('/evaluate', function(req,res){
             }
         })
         .catch((error) => {
-            console.log(results);
+            console.log(error);
             res.send('Service was not found');
           });
     }

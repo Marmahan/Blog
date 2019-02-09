@@ -10,8 +10,6 @@ const mongoose = require('mongoose');
 const Comment = require('./Comment');
 const axios = require('axios');
 var cors = require('cors');         //to handle cors error !!! required in all services
-var async = require("async");
-
 
 const Service = require('../servicesdb/Service');//content trust
 const Relation = require('../servicesdb/Relation');//content trust
@@ -30,49 +28,79 @@ mongoose.Promise = global.Promise;
 //so the app can handle json requests
 app.use(bodyParser.json());
 
-
-
-
-
-
+//store services names and ports
+var svs= new Array();
+var sdata= new Array();
+var selfPort=1116;// the port of the comment service so it can recognize its direct trust
 //post request to save a new comment
 app.post('/newcomment', function(req,res){
 
-    var duplicationport=0;
-    var validationport=0;
 
-    // axios.post('http://localhost:2000/evaluate', {
-    //         serviceName:"duplication",//send the name of the required service
-    //         reqPort: "1116"
-    //     }).then(response => {
-    //         duplicationport=response.data;
-    //             axios.post('http://localhost:2000/evaluate', {
-    //                     serviceName:"validation",//send the name of the required service
-    //                     reqPort: "1116"
-    //                 }).then(response => {
-    //                     validationport=response.data;
-    //             console.log('duplication port: '+ duplicationport);
-    //             console.log('validation port: '+ validationport);
-    //          //res.send(response.data.toString());
-    //      });
-    //         res.send('all is done');
-           
-    //     });
+    Service.find({name: "duplication"}, function(err, services){
+        if(err)
+            res.status(402).send('No duplications found');
+        else
+            {
+                //stores all the names and ports for services that have the name "duplication"
+                for( var i in services){
+                    svs.push({port:services[i].port,name:services[i].name});
+                }
 
+                //console.log(services.length)
+                res.json(services);
+            }
+            var index=Math.floor(Math.random() * svs.length);//choose a service randomly
 
+            //get the data of the service from the Service collection
+            Service.findOne({port: svs[index].port}, function(err, data){
+                if(err)
+                    {
+                        console.log('Error retrieving the rest of the data');
+                        return;
+                    }
+                else{//store the data in an array
+                    sdata.push({_id:data._id,name:data.name, port:data.port, source:data.source,
+                        sensitivity:data.sensitivity, startdate:data.startdate, 
+                        lastsuccess:data.lastsuccess, interactions:data.interactions, 
+                        successful:data.successful, failed:data.failed});
 
-    setTimeout(()=>{
-        console.log('duplication port: '+ duplicationport);
-    }, 1000);
-            
-                
-            
-             
-
+                        //get how much direct trust and indirect trust this service has
+                        //basically get the data from the "Relation" collection
+                        Relation.findOne({sid:sdata[0]._id}, function(err, retn){
+                            if(err)
+                                {
+                                    console.log('Error retrieving the relation data');
+                                    return;
+                                }
+                            else{
+                                var v=0;
+                                 for(v=0;v< retn.services.length;v++){
+                                     var key="trust"+v;
+                                     if(retn.services[v].port==selfPort)//if the port matchs the port of the service 
+                                        key="strust" //then this is the direct trust value
+                                     sdata.push({[key]:retn.services[v].trust})
+                                 }
+                                 //now the data is not organized well
+                                 //store everything as a single object in the array of objects
+                                 acc={}
+                                 acc=sdata.reduce(function(acc, x) {
+                                    for (var key in x) acc[key] = x[key];
+                                    return acc;
+                                }, {});
+                                console.log(acc);
+                                //now calculate the trust evaluation
+                            }
+                        })
+                }
+            })
+            //for( var i in svs){
+                //console.log(svs[index]);
+            //}
+    });
 
     /////////////////////////////
 
-    
+    /*
     axios.post('http://localhost:1118/validation/newcomment', //request input validation from (Validation) service
     {   
         //no need to validate postID because the frontend will always send it 
@@ -115,7 +143,7 @@ app.post('/newcomment', function(req,res){
         else
             res.send(response.data);
     });
-
+*/
 });
 
 //get all comments of a specific post

@@ -22,22 +22,27 @@ mongoose.Promise = global.Promise;
 app.use(bodyParser.json());
 
 
+
+var indexes = new Array(); //contains the indexes of the already choosen services
+
 app.post('/contenttrustevaluate', function(req,res){
     //store services names and ports
     var svs= new Array();
     var sdata= new Array();
     var selfPort=req.body.reqPort;// the port of the requestor service so it can recognize its direct trust
     var nOfServices=7;//no. of services - 1
-    var indexes= new Array();
     var index=-1;
     var isTrustSufficient=false;
-    var nOfAttempts=0;
-    var allAttempts=false;
     var evaluate=0;
     var trust=0;
     var notZeroTrust=0;//to calculate how many trusts are not zero so divide the overall over this number
     var finalevaluation=0;
     var sTrustIndex=-1;
+
+    var nOfAttempts=0;
+    var noAttempts;
+
+    
 
     Service.find({name: req.body.serviceName }).then( services =>{
 
@@ -60,175 +65,215 @@ app.post('/contenttrustevaluate', function(req,res){
 
         })
         .then( ()=>{
+
             var tmp=Math.floor(Math.random() * svs.length);//choose a service randomly
-            index=tmp;
-            //evaluate++;//how many evaluations
-            //get the data of the service from the Service collection
-            Service.findOne({port: svs[index].port}).then( data => {
-                if(!data)
+            //make sure that you don't try to calculate
+            //the trust for a service that has been calculated before
+            noAttempts=0;
+            var allAttempts=false;
+            while(indexes.includes(tmp) ){
+                var tmp=Math.floor(Math.random() * svs.length);//choose a service randomly  
+                noAttempts++;
+                //random guess that all possible options 
+                //have already been tested
+                if(noAttempts>=nOfServices*2)
                     {
-                        res.status(402).send('Error retrieving the rest of the data');
+                        allAttempts=true;
+                        break;
                     }
-                else{//store the data in an array
-                        sdata.push({_id:data._id,name:data.name, port:data.port, source:data.source,
-                        sensitivity:data.sensitivity, startdate:data.startdate, 
-                        lastsuccess:data.lastsuccess, interactions:data.interactions, 
-                        successful:data.successful, failed:data.failed});
-                        //console.log(sdata);
-                        //console.log('second');
-                    }
-            }).then( ()=>{
-                Relation.findOne({sid:sdata[0]._id}).then( retn =>{
-                    if(!retn)
+            }
+            //this is all the possible options
+            if(allAttempts){
+                res.send('allattempts');
+            }
+            //a new service is found
+            //calculate trust evaluation
+            else
+            {
+                index=tmp;
+                indexes.push(tmp); //store the index of the service, so it does not get choosen again.
+                //console.log('the indexes are '+indexes)
+
+                //get the data of the service from the Service collection
+                Service.findOne({port: svs[index].port}).then( data => {
+                    if(!data)
                         {
-                            res.status(402).send('Error retrieving the relation data');
+                            res.status(402).send('Error retrieving the rest of the data');
                         }
-                    else{   //store the values of trust in the Relation into the array
-                            var v=0,c=0;
-                            for(v=0;v< retn.services.length;v++){
-                                var key="trust"+c;
-                                if(retn.services[v].port==selfPort)//if the port matchs the port of the service 
-                                    {
-                                        key="strust"; //then this is the direct trust value
-                                        sTrustIndex=v;//send the index of the direct trust/self-trust
-                                    }
-                                else
-                                    c++;
-                                sdata.push({[key]:retn.services[v].trust})
+                    else{//store the data in an array
+                            sdata.push({_id:data._id,name:data.name, port:data.port, source:data.source,
+                            sensitivity:data.sensitivity, startdate:data.startdate, 
+                            lastsuccess:data.lastsuccess, interactions:data.interactions, 
+                            successful:data.successful, failed:data.failed});
+                            //console.log(sdata);
+                            //console.log('second');
+                        }
+                }).then( ()=>{
+                    Relation.findOne({sid:sdata[0]._id}).then( retn =>{
+                        if(!retn)
+                            {
+                                res.status(402).send('Error retrieving the relation data');
                             }
+                        else{   //store the values of trust in the Relation into the array
+                                var v=0,c=0;
+                                for(v=0;v< retn.services.length;v++){
+                                    var key="trust"+c;
+                                    if(retn.services[v].port==selfPort)//if the port matchs the port of the service 
+                                        {
+                                            key="strust"; //then this is the direct trust value
+                                            sTrustIndex=v;//send the index of the direct trust/self-trust
+                                        }
+                                    else
+                                        c++;
+                                    sdata.push({[key]:retn.services[v].trust})
+                                }
+                            }
+                    }).then(()=>{//now the data is not organized well
+                        acc={} //store everything as a single object in the array of objects
+                        acc=sdata.reduce( function(acc, x) {
+                           for (var key in x) acc[key] = x[key];
+                           return acc;
+                       }, {});
+                   
+                      console.log(acc);
+                      //console.log('third');
+                    }).then(()=>{//calculate trust evaluation
+                        if(acc.source=='in')
+                            trust=trust+10;
+                        else
+                            trust = trust +5;
+                        //console.log(trust);
+    
+                        //mainpulate the trust value depending on the difference
+                        var difference=0;
+                        difference=acc.successful-acc.failed;
+    
+                        if(difference<0)
+                            trust-=5;
+                        else if(difference>0 && difference<4)
+                            trust+=2;
+                        else if(difference>3 && difference<7)
+                            trust+=2;
+                        else if(difference>7 && difference < 11)
+                            trust+=2;
+                        else if(difference>10)
+                            trust+=5;
+    
+                        //console.log(trust);
+    
+                        //number of services (including self-trust)
+                        var tmptrust=0;
+    
+                        tmptrust=parseInt(acc.strust)//*2;
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+                        
+                        tmptrust=parseInt(acc.trust0);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+    
+                        tmptrust=parseInt(acc.trust1);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+    
+                        tmptrust=parseInt(acc.trust2);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+    
+                        tmptrust=parseInt(acc.trust3);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+    
+                        tmptrust=parseInt(acc.trust4);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+    
+                        tmptrust=parseInt(acc.trust5);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+    
+                        //divide the final trust by the trusts that are not zero
+                        finalevaluation=trust/notZeroTrust;
+    
+                        console.log('sum of trust is ' + trust);
+                        console.log('final evaluation ' + finalevaluation);
+    
+                        if((finalevaluation)>10)
+                            trust=10;
+                        else if ((finalevaluation)<0)
+                            trust = 0;
+                        else
+                            trust=Math.floor(finalevaluation);
+    
+                        //trust evaluation according to sensitivity
+                        switch(acc.sensitivity){
+                            case 'h':
+                                if(trust>6)
+                                    isTrustSufficient=true;
+                                break;
+                            case 'm':
+                                if(trust>3 && trust<7)
+                                    isTrustSufficient=true;
+                                break;
+                            case 'l':
+                                if(trust>0 && trust<4)
+                                    isTrustSufficient=true;
+                                break;
                         }
-                }).then(()=>{//now the data is not organized well
-                    acc={} //store everything as a single object in the array of objects
-                    acc=sdata.reduce( function(acc, x) {
-                       for (var key in x) acc[key] = x[key];
-                       return acc;
-                   }, {});
-               
-                  console.log(acc);
-                  //console.log('third');
-                }).then(()=>{//calculate trust evaluation
-                    if(acc.source=='in')
-                        trust=trust+10;
-                    else
-                        trust = trust +5;
-                    //console.log(trust);
-
-                    //mainpulate the trust value depending on the difference
-                    var difference=0;
-                    difference=acc.successful-acc.failed;
-
-                    if(difference<0)
-                        trust-=5;
-                    else if(difference>0 && difference<4)
-                        trust+=2;
-                    else if(difference>3 && difference<7)
-                        trust+=2;
-                    else if(difference>7 && difference < 11)
-                        trust+=2;
-                    else if(difference>10)
-                        trust+=5;
-
-                    //console.log(trust);
-
-                    //number of services (including self-trust)
-                    var tmptrust=0;
-
-                    tmptrust=parseInt(acc.strust);//*2
-                    if(tmptrust)
-                        notZeroTrust++;
-                    trust=trust+tmptrust;
-                    tmptrust=0;
-                    
-                    tmptrust=parseInt(acc.trust0);
-                    if(tmptrust)
-                        notZeroTrust++;
-                    trust=trust+tmptrust;
-                    tmptrust=0;
-
-                    tmptrust=parseInt(acc.trust1);
-                    if(tmptrust)
-                        notZeroTrust++;
-                    trust=trust+tmptrust;
-                    tmptrust=0;
-
-                    tmptrust=parseInt(acc.trust2);
-                    if(tmptrust)
-                        notZeroTrust++;
-                    trust=trust+tmptrust;
-                    tmptrust=0;
-
-                    tmptrust=parseInt(acc.trust3);
-                    if(tmptrust)
-                        notZeroTrust++;
-                    trust=trust+tmptrust;
-                    tmptrust=0;
-
-                    tmptrust=parseInt(acc.trust4);
-                    if(tmptrust)
-                        notZeroTrust++;
-                    trust=trust+tmptrust;
-                    tmptrust=0;
-
-                    tmptrust=parseInt(acc.trust5);
-                    if(tmptrust)
-                        notZeroTrust++;
-                    trust=trust+tmptrust;
-                    tmptrust=0;
-
-                    //divide the final trust by the trusts that are not zero
-                    finalevaluation=trust/notZeroTrust;
-
-                    console.log('sum of trust is ' + trust);
-                    console.log('final evaluation ' + finalevaluation);
-
-                    if((finalevaluation)>10)
-                        trust=10;
-                    else if ((finalevaluation)<0)
-                        trust = 0;
-                    else
-                        trust=Math.floor(finalevaluation);
-
-                    //trust evaluation according to sensitivity
-                    switch(acc.sensitivity){
-                        case 'h':
-                            if(trust>6)
-                                isTrustSufficient=true;
-                            break;
-                        case 'm':
-                            if(trust>3 && trust<7)
-                                isTrustSufficient=true;
-                            break;
-                        case 'l':
-                            if(trust>0 && trust<4)
-                                isTrustSufficient=true;
-                            break;
-                    }
-
-                    console.log('strust index is ' + sTrustIndex);
-                    //send the port number to refer to successful evaluation
-                    //also send trust, interactions+1, successful+1, id
-                    if(isTrustSufficient){
-                        console.log(trust);
-                        //store the values to send them in the response
-                        var finalresponse=[];
-                         finalresponse.push({port:acc.port.toString(),trust:trust.toString(),
-                            interactions:acc.interactions.toString(),successful:acc.successful.toString(),
-                            trustIndex:sTrustIndex.toString()});
-                        //send the response    
-                        res.send(finalresponse);
-
-                    }
-                    else
-                        {
+    
+                        console.log('strust index is ' + sTrustIndex);
+                        //send the port number to refer to successful evaluation
+                        //also send trust, interactions+1, successful+1, id
+                        if(isTrustSufficient){
                             console.log(trust);
-                            res.send('failed' + acc.port.toString()+'t'+trust+';');
+                            //store the values to send them in the response
+                            var finalresponse=[];
+                             finalresponse.push({port:acc.port.toString(),trust:trust.toString(),
+                                interactions:acc.interactions.toString(),successful:acc.successful.toString(),
+                                trustIndex:sTrustIndex.toString()});
+                            //send the response    
+                            res.send(finalresponse);
+    
                         }
+                        else//trust is insufficient, yet send it to be stored to get the max possible value
+                            {
+                                console.log(trust);
+                                //increase the interactions
+                                //increase the faileds
+                                Service.findOneAndUpdate({port: acc.port },
+                                    {
+                                        $inc :{  interactions: 1,
+                                            failed: 1 }
+                                    },
+                                    { new: true, useFindAndModify: false })
+                                    .then((updated)=>{
+                                    console.log("interactions and failed increased")
+                                }).catch((err)=>{
+                                    console.log(err);
+                                });
+                                res.send('failed' + acc.port.toString()+'t'+trust+';');
+                            }
+                    })
                 })
-            })
-
+            }
     }) 
      .catch(err => {
          //when the service is not part of the list of services
+         console.log(err)
          res.send('Service is not available');
      });
 }) 
@@ -237,10 +282,10 @@ app.post('/contenttrustevaluate', function(req,res){
 var reqPort=0;
 app.post('/evaluate', function(req,res){
 
-    reqPort:req.body.reqPort;//get the port of the requesting service
     var results=new Array();
     var resulttrusts=new Array();
-    
+    indexes=[];//must be set back empty, otherwise trust can't be calculated twice
+
     //5 refers to the number of tries
     request(5, (data, error) => {
         // consume data
@@ -255,10 +300,15 @@ app.post('/evaluate', function(req,res){
         axios.post('http://localhost:2000/contenttrustevaluate', {
             serviceName: req.body.serviceName,//name of the required service
             reqPort: req.body.reqPort        //port of the requestor
+            
         }).then(response => {
-            //success, result doesn't have f in it
-            //it only contains the port number
-            if(!response.data.toString().includes('failed')) {
+            reqPort=req.body.reqPort;
+
+            
+            //success, result doesn't have "failed" in it
+            //it is an array of all the useful data
+            if(!response.data.toString().includes('failed')&& 
+            !response.data.toString().includes('allattempts')) {
                 //should save the trust values back to the database
                 //here
                 var portvalue = response.data[0].port;
@@ -273,6 +323,14 @@ app.post('/evaluate', function(req,res){
                 console.log('successfull value is '+successfullvalue);
                 console.log('directtrustindex value is '+directtrustindex);
 
+    /*********************************************************************************** */
+                //             !!!! CORRECT DON'T DELETE !!!!
+                //             !!!! CORRECT DON'T DELETE !!!!
+                //             !!!! CORRECT DON'T DELETE !!!!
+                //             !!!! CORRECT DON'T DELETE !!!!
+
+
+
                 //update the Service collection
                 //new values for interactions,...
                 Service.findOneAndUpdate({port: portvalue }, 
@@ -284,23 +342,75 @@ app.post('/evaluate', function(req,res){
                 }).catch((err)=>{
                     console.log(err);
                 })
+                //             !!!! CORRECT DON'T DELETE !!!!
+                //             !!!! CORRECT DON'T DELETE !!!!
+                //             !!!! CORRECT DON'T DELETE !!!!
+                //             !!!! CORRECT DON'T DELETE !!!!
+    /************************************************************************************** */ 
+
+                console.log('port value is '+portvalue+' reqport is '+reqPort);
 
                 //Update the direct trust
-                 Relation.findOneAndUpdate({port: portvalue, 'services.port':'1116' }, 
-                 {'$set': {
-                    'services.$.trust': trustvalue.toString()
-                }}, { new: true, useFindAndModify: false }).then(()=>{
-                    console.log('direct trust updated');
-                }).catch((err)=>{
-                    console.log(err);
-                })
+                /////////////NOT WORKING
+                //  Relation.findOneAndUpdate({port: portvalue, 'services.port':reqPort }, 
+                //  {'$set': {
+                //     'services.$.trust': trustvalue.toString()
+                // }}, { new: true, useFindAndModify: false }).then(()=>{
+                //     console.log('direct trust updated');
+                // }).catch((err)=>{
+                //     console.log(err);
+                // })
 
+           
                 res.send(portvalue.toString());
             }
+            //all services have been choosen and no need to continue trying
+            //so don't recall the api again
+            //we should select the max trust
+            else if(response.data.toString().includes('allattempts')){
+                        //parse the values of the result into integer
+                        //so we can extract the highest trust
+                        results.forEach(function (arrayItem) {
+                            resulttrusts.push(parseInt(arrayItem.trust));
+                        });
+                        console.log(resulttrusts)
+                        //get the index of max value
+                        var indexOfMaxValue = resulttrusts.indexOf(Math.max(...resulttrusts));
+                        //console.log(results[indexOfMaxValue].port);
+
+                        //increase the successful and decrease the failed for the choosen service
+                        //decrease the failed, because it was increased for all the values
+                        Service.findOneAndUpdate({port: results[indexOfMaxValue].port },
+                            {
+                                $inc :{  successful: 1, failed:-1}
+                                
+                            },
+                            { new: true, useFindAndModify: false })
+                            .then((updated)=>{
+                                console.log('successful increased after going through all attempts');
+                        }).catch((err)=>{
+                            console.log(err);
+                        });  
 
 
-            else {//failed try so get the values and store them in the array
+                        //Update the direct trust
+                        //NOT WORKING
+                        //  Relation.findOneAndUpdate({port: results[indexOfMaxValue].port, 'services.port':reqPort }, 
+                        //  {'$set': {
+                        //     'services.$.trust': results[indexOfMaxValue].trust
+                        // }}, { new: true, useFindAndModify: false }).then(()=>{
+                        //     console.log('direct trust updated');
+                        // }).catch((err)=>{
+                        //     console.log(err);
+                        // })
+                        console.log(results[indexOfMaxValue].port);
+
+                        //should store the trust values back to the database
+                        callback([], "all tries "+ results[indexOfMaxValue].port);
+            }
+            else {//failed evaluation, so get the values and store them in the array
                 //extract the trust value
+
                 var trustvalue = response.data.toString().substring(
                     response.data.toString().lastIndexOf("t") + 1, 
                     response.data.toString().lastIndexOf(";")
@@ -313,11 +423,14 @@ app.post('/evaluate', function(req,res){
                 //store all the failed values in the array
                 //so if all tries failed, the highest value is sent back 
                 results.push({port:portvalue, trust:trustvalue});
+
                 console.log(results);
 
+                //should we keep trying??
                 if (retries > 0) {
                     request(--retries, callback);
                 }
+                //No more trying, all calls failed to get suffiecient trust!!!
                 //should send the highest value out of failed attempts
                 else {
                         //parse the values of the result into integer
@@ -325,10 +438,29 @@ app.post('/evaluate', function(req,res){
                         results.forEach(function (arrayItem) {
                             resulttrusts.push(parseInt(arrayItem.trust));
                         });
+                        //console.log(results);
                         console.log(resulttrusts)
                         //get the index of max value
                         var indexOfMaxValue = resulttrusts.indexOf(Math.max(...resulttrusts));
-                        console.log(results[indexOfMaxValue].port);
+                    
+                        console.log(results[indexOfMaxValue].port); 
+
+                        //increase the successful and decrease the failed
+                        //decrease the failed, because it was increased for all the values
+                        Service.findOneAndUpdate({port: results[indexOfMaxValue].port },
+                            {
+                                $inc :{  successful: 1, failed:-1}
+                                
+                            },
+                            { new: true, useFindAndModify: false })
+                            .then((updated)=>{
+                                console.log('increased well');
+                        }).catch((err)=>{
+                            console.log(err);
+                        }); 
+
+                        //set the direct trust
+                        /////////here/////////////
                         //should store the trust values back to the database
                         callback([], "Not enough trust but best possible is "+ results[indexOfMaxValue].port);  
                     }

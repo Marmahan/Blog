@@ -58,7 +58,7 @@ app.post('/newpost/:uemail',jwtVerify({secret:secret}), function(req,res){
                                 }
                                 var post = new Post (newPost);
                                 post.save().then(function(){
-                                    res.send(post);
+                                    res.send('1');
                                 }).catch(function(err){
                                     if(err)
                                         throw err;
@@ -84,6 +84,17 @@ app.post('/newpost/:uemail',jwtVerify({secret:secret}), function(req,res){
 app.get('/postbyuser/:id',jwtVerify({secret:secret}), function(req,res){
     //req.user.userID is brought from the token
     Post.find({userID: req.user.userID, _id:req.params.id}).then(function(posts){
+        res.json(posts);
+    }).catch(function(err){
+        if(err)
+            throw err;
+    });
+});
+
+//get all posts by a specified user, 
+app.get('/allpostsbyuser',jwtVerify({secret:secret}), function(req,res){
+    //req.user.userID is brought from the token
+    Post.find({userID: req.user.userID}).then(function(posts){
         res.json(posts);
     }).catch(function(err){
         if(err)
@@ -137,7 +148,7 @@ app.get('/posts',function(req,res){
 
 
 //delete a post by id, user must be logged in 
-app.delete('/post/:id', jwtVerify({secret:secret}),function(req,res){
+app.delete('/deleteapost/:id', jwtVerify({secret:secret}),function(req,res){
     Post.findOneAndRemove({_id: req.params.id}).then(function(){
         res.send('A post has been deleted');
     }).catch(function(err){
@@ -147,8 +158,8 @@ app.delete('/post/:id', jwtVerify({secret:secret}),function(req,res){
 });
 
 //update a post by id, user must be logged in 
-app.put('/post/:id', jwtVerify({secret:secret}),function(req,res){
-    Post.findOneAndUpdate({_id:req.params.id}, { title: req.body.title,body: req.body.body },{ new: true },function(err,data){
+app.put('/editpost/:id', jwtVerify({secret:secret}),function(req,res){
+    Post.findOneAndUpdate({_id:req.params.id}, { title: req.body.title, body: req.body.body },{ new: true },function(err,data){
        if(data)
             res.send('A post has been updated');
         else
@@ -159,7 +170,8 @@ app.put('/post/:id', jwtVerify({secret:secret}),function(req,res){
 //Error message If the user tries to rich a protected route
 app.use(function(err, req, res, next){
     if(err.name==='UnauthorizedError'){
-        res.status(500).send(err.message);
+        //res.status(500).send(err.message);
+        res.send('Invalid credentials');
     }
 }); 
 

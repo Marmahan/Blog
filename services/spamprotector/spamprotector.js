@@ -15,7 +15,7 @@ const app = express();
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes where each 60000 is one minute
-    max: 10, // limit each IP to 5 requests per windowMs so the actual number is max/2
+    max: 10000, // limit each IP to 5 requests per windowMs so the actual number is max/2
     message:
     "Too many requests created from this IP, please try again after 15 mins!",
     statusCode:200  //set it to 200 so the server doesn't stop working  

@@ -31,35 +31,46 @@ const secret = 'secret';
 //post request to save a new user
 app.post('/login', function(req,res){
 
-    axios.post('http://localhost:1118/validation/login', //request input validation from (Validation) service
-    {   
-        email: req.body.email,
-        password: req.body.password
+    var validationport=0;
+    axios.post('http://localhost:2000/evaluate', { //trust evaluation for validation
+    serviceName:"validation",//send the name of the requesting service
+    reqPort: "1114" //send the number of the requesting service
+    }).then(response => {
+        validationport=response.data;
+        var validationuri='http://localhost:'+validationport+'/validation/login'
 
-    }).then(function(response){
-        if(response.data==1){
-            //Checks if the email already exist
-            User.findOne({ email: req.body.email, password: req.body.password}, function (err, doc){
-                if(doc)//user has an account
-                    {
-                        let expirationDate = Math.floor(Date.now() / 1000) + 10000 //30 sec
-                        var token = jwt.sign({userID: doc._id, exp: expirationDate}, secret);
-                        //set loggedin true
-                        User.findOneAndUpdate({email: req.body.email}, { $set: { islogged: true } },{ new: true }, function(err,doc){ 
-                            //console.log(doc);
-                            res.send(token);//send jwt token
-                        });
-
-                    }
-                //email doesn't exist
-                else{
-                    res.send('Invalid login');
-                    }
-            });
-        }   
-        else
-            res.send(response.data);
+        axios.post(validationuri, //request input validation from (Validation) service
+        {   
+            email: req.body.email,
+            password: req.body.password
+    
+        }).then(function(response){
+            if(response.data==1){
+                //Checks if the email already exist
+                User.findOne({ email: req.body.email, password: req.body.password}, function (err, doc){
+                    if(doc)//user has an account
+                        {
+                            let expirationDate = Math.floor(Date.now() / 1000) + 10000 //30 sec
+                            var token = jwt.sign({userID: doc._id, exp: expirationDate}, secret);
+                            //set loggedin true
+                            User.findOneAndUpdate({email: req.body.email}, { $set: { islogged: true } },{ new: true }, function(err,doc){ 
+                                //console.log(doc);
+                                res.send(token);//send jwt token
+                            });
+    
+                        }
+                    //email doesn't exist
+                    else{
+                        res.send('Invalid login');
+                        }
+                });
+            }   
+            else
+                res.send(response.data);
+        });
+    
     });
+
 });
 
 

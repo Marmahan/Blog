@@ -25,28 +25,32 @@ const secret = 'secret';
 //post request to search for a term
 //search is case insensitive
 app.post('/search', function(req,res){
-    axios.post('http://localhost:1118/validation/search', //request input validation from (Validation) service
-    {                                                     // Validation is not working proberly yet
-        term: req.body.term
-    }).then(function(response){
+    var validationport=0;
+    axios.post('http://localhost:2000/evaluate', { //trust evaluation for validation
+    serviceName:"validation",//send the name of the requesting service
+    reqPort: "1117" //send port number of the requesting service
+    }).then(response => {
+        validationport=response.data;
+        var validationuri='http://localhost:'+validationport+'/validation/search'
 
-        if(response.data==1){
-            axios.post('http://localhost:1120/sprotect/search').then(function(reply){
-                if(reply.data==1){
-                    Post.find({body: {'$regex': req.body.term,$options:'i'}}, function(err, posts){
-                        if(err)
-                          res.send(err);
-                        else 
-                          res.json(posts)   
-                    });
-                }
-                else    
-                    res.send(reply.data);
-            });
-        }
-        else
-            res.send(response.data);
-    })
+        axios.post(validationuri, //request input validation from (Validation) service
+        {                                                     // Validation is not working proberly yet
+            term: req.body.term
+        }).then(function(response){
+    
+            if(response.data==1){
+                Post.find({body: {'$regex': req.body.term,$options:'i'}}, function(err, posts){
+                    if(err)
+                        res.send(err);
+                    else 
+                        res.json(posts)   
+                });
+            }
+            else
+                res.send(response.data);
+        })
+    
+    });
 
 });
 

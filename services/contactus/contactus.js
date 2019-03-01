@@ -25,24 +25,39 @@ app.use(bodyParser.json());
 
 //post request to send a message to the admin
 app.post('/contact', function(req,res){
-    axios.post('http://localhost:1118/validation/contact', //request input validation from (Validation) service
-    {   
-        name: req.body.name,
-        email: req.body.email,
-        content: req.body.content
-        
-    }).then(function(response){
-        if(response.data==1){
-            axios.post('http://localhost:1119/duplication/contact', //request duplication check from (Duplication) service
-            {
-                name: req.body.name,
-                email: req.body.email,
-                content: req.body.content
+    var duplicationport=0;
+    var validationport=0;
+    
+    axios.post('http://localhost:2000/evaluate', { //trust evaluation for validation
+    serviceName:"validation",//send the name of the requesting service
+    reqPort: "1113" //send port number of the requesting service
+    }).then(response => {
+        validationport=response.data;
+        var validationuri='http://localhost:'+validationport+'/validation/contact'
 
-            }).then(function(answer){
-                if(answer.data==1){
-                    axios.post('http://localhost:1120/sprotect/contact').then(function(reply){ //Spam protector
-                        if(reply.data==1){
+        axios.post(validationuri, //request input validation from (Validation) service
+        {   
+            name: req.body.name,
+            email: req.body.email,
+            content: req.body.content
+            
+        }).then(function(response){
+            if(response.data==1){
+                axios.post('http://localhost:2000/evaluate', { //trust evaluation for duplication
+                serviceName:"duplication",//send the name of the requesting service
+                reqPort: "1113" //send  port number of the requesting service
+                }).then(response => {
+                    duplicationport=response.data;
+                    var duplicationuri='http://localhost:'+duplicationport+'/duplication/contact'
+                    
+                    axios.post(duplicationuri, //request duplication check from (Duplication) service
+                    {
+                        name: req.body.name,
+                        email: req.body.email,
+                        content: req.body.content
+        
+                    }).then(function(answer){
+                        if(answer.data==1){
                             var newContact ={
                                 name: req.body.name,
                                 email: req.body.email,
@@ -57,17 +72,17 @@ app.post('/contact', function(req,res){
                             });
                         }
                         else
-                            res.send(reply.data); 
+                            res.send(answer.data);
                     });
+                });
+            }
+            else
+                res.send(response.data);
+        });
 
-                }
-                else
-                    res.send(answer.data);
-            });
-        }
-        else
-            res.send(response.data);
     });
+
+
 });
 
 

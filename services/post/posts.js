@@ -34,20 +34,36 @@ app.post('/newpost/:uemail',jwtVerify({secret:secret}), function(req,res){
     let thewriter='';
     axios.get('http://localhost:1122/email/'+ req.params.uemail).then(function(wrt){
         thewriter=wrt.data;
-        //console.log(wrt.data);
-        axios.post('http://localhost:1118/validation/newpost', //request input validation from (Validation) service
-        {   
-            title: req.body.title,
-            body: req.body.body
-        }).then(function(response){
-            if(response.data==1){
-                axios.post('http://localhost:1119/duplication/newpost',{
-                    title: req.body.title,
-                    body: req.body.body
-                }).then(function(answer){ //request to (Duplication) service
-                    if(answer.data==1){
-                        axios.post('http://localhost:1120/sprotect/newpost').then(function(reply){
-                            if(reply.data==1){
+        
+        var duplicationport=0;
+        var validationport=0;
+        axios.post('http://localhost:2000/evaluate', { //trust evaluation for validation
+        serviceName:"validation",//send the name of the requesting service
+        reqPort: "1115" //send the number of the requesting service
+        }).then(response => {
+            validationport=response.data;
+            var validationuri='http://localhost:'+validationport+'/validation/newpost'
+
+
+            axios.post(validationuri, //request input validation from (Validation) service
+            {   
+                title: req.body.title,
+                body: req.body.body
+            }).then(function(response){
+                if(response.data==1){
+
+                    axios.post('http://localhost:2000/evaluate', { //trust evaluation for duplication
+                    serviceName:"duplication",//send the name of the requesting service
+                    reqPort: "1115" //send the port of the requesting service
+                    }).then(response => {
+                        duplicationport=response.data;
+                        var duplicationuri='http://localhost:'+duplicationport+'/duplication/newpost'
+
+                        axios.post(duplicationuri,{
+                            title: req.body.title,
+                            body: req.body.body
+                        }).then(function(answer){ //request to (Duplication) service
+                            if(answer.data==1){
                                 var newPost ={
                                     userID: req.user.userID, //brought from the jwt token
                                     title: req.body.title,
@@ -65,17 +81,18 @@ app.post('/newpost/:uemail',jwtVerify({secret:secret}), function(req,res){
                                 }); 
                             }
                             else
-                                res.send(reply.data); 
+                                res.send(answer.data);
                         });
-                    }
-                    else
-                        res.send(answer.data);
-                });
-    
-            }   
-            else
-                res.send(response.data);
+                    });
+        
+                }   
+                else
+                    res.send(response.data);
+            });
+
         });
+
+
     });
     
 });

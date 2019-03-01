@@ -26,6 +26,91 @@ app.use(bodyParser.json());
 
 //post request to save a new user
 app.post('/newuser', function(req,res){
+
+    var validationport=0;
+    var usercheckport=0;
+
+    axios.post('http://localhost:2000/evaluate', { //trust evaluation for validation
+    serviceName:"validation",//send the name of the requesting service
+    reqPort: "1111" //send the number of the requesting service
+    }).then(response => {
+        validationport=response.data;
+        var validationuri='http://localhost:'+validationport+'/validation/registration'
+
+        //call the (validation) service to check if input fields are fine
+        axios.post(validationuri,
+        {
+            name: req.body.name,
+            email: req.body.email,
+            password: req.body.password
+        }).then(function (response) {
+            if(response.data==1)
+                {
+                    axios.post('http://localhost:2000/evaluate', { //trust evaluation for validation
+                    serviceName:"usercheck",//send the name of the requesting service
+                    reqPort: "1111" //send the number of the requesting service
+                    }).then(response => {
+                        usercheckport=response.data;
+                        var usercheckuri='http://localhost:'+usercheckport+'/user/'
+
+                        //call (usercheck) service to check if user already exist or not
+                        axios.get(usercheckuri + req.body.email).then(function(response){
+                            if(response.data=='1')
+                                res.send('User already exists');
+                            else    //user doesn't exist so create a new user
+                                {
+
+                                    var newUser ={
+                                        name: req.body.name,
+                                        email: req.body.email,
+                                        password: req.body.password
+                                    }
+                                    var user = new User (newUser);
+                                    user.save().then(function(){
+                                        res.send('1');
+                                    }).catch(function(err){
+                                        if(err)
+                                            throw err;
+                                    });  
+        
+                                }
+                        });
+
+                    });
+              
+                }
+            else
+                res.send(response.data);
+        })
+        .catch(function (error) {
+            if(error)
+                throw error;
+        });
+    
+    });
+    
+});
+
+
+//Service is listening to port 1111
+app.listen(1111, function(){
+    console.log("Service: (User Registration) is running...");
+});
+
+/*
+{
+    "name":"Whatever the name is",
+    "email":"wev@test.con",
+    "password":"somepassword"
+}
+*/
+
+
+
+/*
+
+//post request to save a new user
+app.post('/newuser', function(req,res){
     //call the (validation) service to check if input fields are fine
     axios.post('http://localhost:1118/validation/registration',
     {
@@ -75,47 +160,4 @@ app.post('/newuser', function(req,res){
     
 });
 
-// //old way with no services from outside
-// //post request to save a new user
-// app.post('/newuser', function(req,res){
-//     // Book.create(req.body).then(function(book){
-//     //     res.send(book);
-//     // });
-
-//     //Checks if the email already exist
-//     User.findOne({ email: req.body.email}, function (err, doc){
-//         if(doc)
-//             res.send('Email already exist');
-//         //email doesn't exist, save the new user
-//         else{
-//             var newUser ={
-//                 name: req.body.name,
-//                 email: req.body.email,
-//                 password: req.body.password
-//             }
-//             var user = new User (newUser);
-//             user.save().then(function(){
-//                 res.send(user);
-//             }).catch(function(err){
-//                 if(err)
-//                     throw err;
-//             });
-//         }
-//       });
-
-// });
-
-
-
-//Service is listening to port 1111
-app.listen(1111, function(){
-    console.log("Service: (User Registration) is running...");
-});
-
-/*
-{
-    "name":"Whatever the name is",
-    "email":"wev@test.con",
-    "password":"somepassword"
-}
 */

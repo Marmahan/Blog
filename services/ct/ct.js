@@ -30,7 +30,7 @@ app.post('/contenttrustevaluate', function(req,res){
     var svs= new Array();
     var sdata= new Array();
     var selfPort=req.body.reqPort;// the port of the requestor service so it can recognize its direct trust
-    var nOfServices=8;//no. of services - 1
+    var nOfServices=11;//no. of services - 1
     var index=-1;
     var isTrustSufficient=false;
     var evaluate=0;
@@ -114,7 +114,7 @@ app.post('/contenttrustevaluate', function(req,res){
                             {
                                 res.status(402).send('Error retrieving the relation data');
                             }
-                        else{   //store the values of trust in the Relation into the array
+                        else{   //store the values of trust in the Relation collection into the array
                                 var v=0,c=0;
                                 for(v=0;v< retn.services.length;v++){
                                     var key="trust"+c;
@@ -164,7 +164,7 @@ app.post('/contenttrustevaluate', function(req,res){
                         //number of services (including self-trust)
                         var tmptrust=0;
     
-                        tmptrust=parseInt(acc.strust)//*2;
+                        tmptrust=parseInt(acc.strust)*2;
                         if(tmptrust)
                             notZeroTrust++;
                         trust=trust+tmptrust;
@@ -206,10 +206,32 @@ app.post('/contenttrustevaluate', function(req,res){
                         trust=trust+tmptrust;
                         tmptrust=0;
 
+                        tmptrust=parseInt(acc.trust6);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
 
-    
+                        tmptrust=parseInt(acc.trust7);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+
+                        tmptrust=parseInt(acc.trust8);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+
+                        tmptrust=parseInt(acc.trust8);
+                        if(tmptrust)
+                            notZeroTrust++;
+                        trust=trust+tmptrust;
+                        tmptrust=0;
+
                         //divide the final trust by the trusts that are not zero
-                        finalevaluation=trust/nOfServices //notZeroTrust;
+                        finalevaluation=trust/notZeroTrust;
     
                         console.log('sum of trust is ' + trust);
                         console.log('final evaluation ' + finalevaluation);
@@ -371,7 +393,7 @@ app.post('/evaluate', function(req,res){
                     console.log(err);
                 })
 
-           
+                //send the port number to the requesting service
                 res.send(portvalue.toString());
             }
             //all services have been choosen and no need to continue trying
@@ -417,8 +439,9 @@ app.post('/evaluate', function(req,res){
 
                         console.log(results[indexOfMaxValue].port);
 
-                        //should store the trust values back to the database
-                        callback([], "all tries "+ results[indexOfMaxValue].port);
+                        
+                        //all tries, so send the port number of the service that scored the highest trust
+                        callback([],  results[indexOfMaxValue].port);
             }
             else {//failed evaluation, so get the values and store them in the array
                 //extract the trust value
@@ -482,9 +505,9 @@ app.post('/evaluate', function(req,res){
                        }).catch((err)=>{
                            console.log(err);
                        })
-                        /////////here/////////////
-                        //should store the trust values back to the database
-                        callback([], "Not enough trust but best possible is "+ results[indexOfMaxValue].port);  
+
+                        //not enough trust, but get the best result
+                        callback([], results[indexOfMaxValue].port);  
                     }
             }
         })

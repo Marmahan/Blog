@@ -13,7 +13,6 @@ var cors = require('cors');         //to handle cors error !!! required in all s
 var async = require("async");
 
 
-
 //creating the server
 const app = express();
 app.use(cors());
@@ -24,9 +23,6 @@ mongoose.Promise = global.Promise;
 
 //so the app can handle json requests
 app.use(bodyParser.json());
-
-
-
 
 
 //post request to save a new comment
@@ -76,6 +72,7 @@ app.post('/newcomment', function(req,res){
                                         if(err)
                                             throw err;
                                     });
+                                    res.send('1');
                         }
                         else
                             res.send(answer.data);
@@ -88,14 +85,7 @@ app.post('/newcomment', function(req,res){
     });
 
 });
-
-
-
-
-                     
-
-
-
+               
 
 //get all comments of a specific post
 app.get('/comments/:id', function(req,res){
@@ -108,14 +98,6 @@ app.get('/comments/:id', function(req,res){
     });
 });
 
-/*
-//Error message If the user tries to rich a protected route
-app.use(function(err, req, res, next){
-    if(err.name==='UnauthorizedError'){
-        res.status(500).send(err.message);
-    }
-}); 
-*/
 
 
 
@@ -124,15 +106,3 @@ app.listen(1116, function(){
     console.log("Service: (Comments) is running...");
 });
 
-
-
-
-/*
-
-{
-    "postID": "5c77b37d6fb0e10664c8ed8e",
-    "email": "testemail@test.com",
-    "commentbody": "This is the first comment"
-}
-
-*/
